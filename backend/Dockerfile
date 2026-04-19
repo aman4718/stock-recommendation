@@ -9,14 +9,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Copy requirements and install
+# Step 1: Install CPU-only PyTorch first to save massive amounts of space (approx 2GB vs 5GB+)
+# This prevents the default GPU-enabled torch from being installed by dependencies.
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+# Step 2: Install other requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the backend code
 COPY . .
 
-# Expose the port Railway provides
+# Expose the port Railway provides (default is 8000 for FastAPI)
 ENV PORT=8000
 EXPOSE 8000
 
