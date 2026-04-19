@@ -1,0 +1,58 @@
+2026-04-19 15:00:48 | INFO     | ============================================================
+2026-04-19 15:00:48 | INFO     |   PHASE 1 — Data Ingestion & Processing
+2026-04-19 15:00:48 | INFO     | ============================================================
+2026-04-19 15:00:48 | INFO     | 
+2026-04-19 15:00:48 | INFO     | [ STEP 1 ]  Fetching stock data from Yahoo Finance...
+2026-04-19 15:00:48 | INFO     | Starting fetch for 29 tickers …
+2026-04-19 15:00:57 | INFO     | ✓ [AAPL]  Price=$270.23  Sector=Technology  PE=34.249683  1M-Change=8.12%
+2026-04-19 15:00:59 | INFO     | ✓ [MSFT]  Price=$422.79  Sector=Technology  PE=26.457449  1M-Change=7.91%
+2026-04-19 15:01:00 | INFO     | ✓ [GOOGL]  Price=$341.68  Sector=Communication Services  PE=31.637035  1M-Change=11.05%
+2026-04-19 15:01:02 | INFO     | ✓ [NVDA]  Price=$201.68  Sector=Technology  PE=41.15918  1M-Change=11.8%
+2026-04-19 15:01:03 | INFO     | ✓ [META]  Price=$688.55  Sector=Communication Services  PE=29.324957  1M-Change=11.84%
+2026-04-19 15:01:04 | INFO     | ✓ [AMD]  Price=$278.39  Sector=Technology  PE=106.25574  1M-Change=39.57%
+2026-04-19 15:01:05 | INFO     | ✓ [TSLA]  Price=$400.62  Sector=Consumer Cyclical  PE=370.94443  1M-Change=2.0%
+2026-04-19 15:01:06 | INFO     | ✓ [JPM]  Price=$310.29  Sector=Financial Services  PE=14.860633  1M-Change=8.39%
+2026-04-19 15:01:08 | INFO     | ✓ [BAC]  Price=$53.91  Sector=Financial Services  PE=13.410448  1M-Change=15.12%
+2026-04-19 15:01:09 | INFO     | ✓ [GS]  Price=$925.95  Sector=Financial Services  PE=16.9216  1M-Change=14.96%
+2026-04-19 15:01:10 | INFO     | ✓ [V]  Price=$317.02  Sector=Financial Services  PE=29.767136  1M-Change=6.02%
+2026-04-19 15:01:11 | INFO     | ✓ [MA]  Price=$521.3  Sector=Financial Services  PE=31.536598  1M-Change=6.9%
+2026-04-19 15:01:12 | INFO     | ✓ [JNJ]  Price=$234.18  Sector=Healthcare  PE=21.231188  1M-Change=-1.31%
+2026-04-19 15:01:14 | INFO     | ✓ [PFE]  Price=$27.56  Sector=Healthcare  PE=20.264706  1M-Change=0.88%
+2026-04-19 15:01:15 | INFO     | ✓ [UNH]  Price=$324.63  Sector=Healthcare  PE=24.518883  1M-Change=14.17%
+2026-04-19 15:01:16 | INFO     | ✓ [ABBV]  Price=$208.38  Sector=Healthcare  PE=87.55462  1M-Change=0.85%
+2026-04-19 15:01:17 | INFO     | ✓ [AMZN]  Price=$250.56  Sector=Consumer Cyclical  PE=34.945606  1M-Change=19.39%
+2026-04-19 15:01:19 | INFO     | ✓ [WMT]  Price=$127.5  Sector=Consumer Defensive  PE=46.703297  1M-Change=4.74%
+2026-04-19 15:01:20 | INFO     | ✓ [COST]  Price=$999.89  Sector=Consumer Defensive  PE=52.077602  1M-Change=2.04%
+2026-04-19 15:01:21 | INFO     | ✓ [MCD]  Price=$311.36  Sector=Consumer Cyclical  PE=26.033443  1M-Change=-1.38%
+2026-04-19 15:01:23 | INFO     | ✓ [XOM]  Price=$146.44  Sector=Energy  PE=21.824142  1M-Change=-7.08%
+2026-04-19 15:01:24 | INFO     | ✓ [CVX]  Price=$183.99  Sector=Energy  PE=27.793053  1M-Change=-7.36%
+2026-04-19 15:01:25 | INFO     | ✓ [CAT]  Price=$794.65  Sector=Industrials  PE=42.201275  1M-Change=14.57%
+2026-04-19 15:01:27 | INFO     | ✓ [HON]  Price=$233.55  Sector=Industrials  PE=33.652737  1M-Change=1.58%
+2026-04-19 15:01:28 | INFO     | ✓ [GE]  Price=$304.13  Sector=Industrials  PE=37.73325  1M-Change=1.05%
+2026-04-19 15:01:29 | INFO     | ✓ [T]  Price=$26.51  Sector=Communication Services  PE=8.720395  1M-Change=-2.27%
+2026-04-19 15:01:31 | INFO     | ✓ [VZ]  Price=$46.55  Sector=Communication Services  PE=11.465517  1M-Change=-4.72%
+2026-04-19 15:01:32 | INFO     | ✓ [SPY]  Price=$710.14  Sector=N/A  PE=28.155151  1M-Change=7.66%
+2026-04-19 15:01:33 | INFO     | ✓ [QQQ]  Price=$648.85  Sector=N/A  PE=34.27903  1M-Change=9.21%
+2026-04-19 15:01:33 | INFO     | Fetched 29/29 stocks successfully.
+2026-04-19 15:01:34 | SUCCESS  | Raw data → E:\nextleap\AI-Agent\backend\data\raw_stocks.json  (29 records)
+2026-04-19 15:01:34 | INFO     |             → 29 stocks fetched
+2026-04-19 15:01:34 | INFO     | 
+2026-04-19 15:01:34 | INFO     | [ STEP 2 ]  Normalising & enriching records …
+2026-04-19 15:01:34 | SUCCESS  | Processed data → E:\nextleap\AI-Agent\backend\data\processed_stocks.json  (29 records)
+2026-04-19 15:01:34 | INFO     |             → 29 records processed
+2026-04-19 15:01:34 | INFO     | 
+2026-04-19 15:01:34 | INFO     | [ STEP 3 ]  Building RAG documents …
+2026-04-19 15:01:34 | SUCCESS  | Documents → E:\nextleap\AI-Agent\backend\data\stock_documents.json  (29 documents)
+2026-04-19 15:01:34 | INFO     |             → 29 documents created
+2026-04-19 15:01:34 | INFO     | 
+2026-04-19 15:01:34 | INFO     | ============================================================
+2026-04-19 15:01:34 | INFO     |   PHASE 1 COMPLETE ✓
+2026-04-19 15:01:34 | INFO     |   Output files:
+2026-04-19 15:01:34 | INFO     |     data/raw_stocks.json       <- raw Yahoo Finance data
+2026-04-19 15:01:34 | INFO     |     data/processed_stocks.json <- enriched + classified
+2026-04-19 15:01:34 | INFO     |     data/stock_documents.json  <- RAG-ready text docs
+2026-04-19 15:01:34 | INFO     | ============================================================
+2026-04-19 15:01:34 | INFO     | 
+2026-04-19 15:01:34 | INFO     |   Sample document (first stock):
+2026-04-19 15:01:34 | INFO     | ------------------------------------------------------------
+2026-04-19 15:01:34 | INFO     | ------------------------------------------------------------
