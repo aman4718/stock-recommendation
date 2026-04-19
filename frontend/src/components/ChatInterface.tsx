@@ -54,11 +54,12 @@ export const ChatInterface: React.FC = () => {
         id: `ai-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, role: 'ai',
         text: r.answer, stocks: r.recommendations,
       }]);
-    } catch {
+    } catch (err) {
       setMsgs(p => [...p, {
         id: `err-${Date.now()}`, role: 'ai',
-        text: 'Could not connect to the analysis engine. Please ensure the backend is running on port 8000.',
+        text: 'I\'m having trouble connecting to the analytics engine right now. Please check your internet connection or try again in a moment.',
       }]);
+      console.error("API Connection Error:", err);
     } finally {
       setLoading(false);
     }

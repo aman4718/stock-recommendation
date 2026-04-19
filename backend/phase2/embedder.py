@@ -25,8 +25,8 @@ def get_model() -> SentenceTransformer:
     """
     global _model
     if _model is None:
-        logger.info(f"Loading embedding model: {EMBEDDING_MODEL} ...")
-        _model = SentenceTransformer(EMBEDDING_MODEL)
+        logger.info(f"Loading embedding model: {EMBEDDING_MODEL} (CPU) ...")
+        _model = SentenceTransformer(EMBEDDING_MODEL, device='cpu')
         logger.success(f"Model loaded — embedding dim: {_model.get_sentence_embedding_dimension()}")
     return _model
 
