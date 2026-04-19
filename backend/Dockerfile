@@ -21,7 +21,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Expose the port Railway provides (default is 8000 for FastAPI)
-ENV PORT=8000
 EXPOSE 8000
 
 # Start the application using uvicorn via a shell to evaluate the $PORT variable correctly
