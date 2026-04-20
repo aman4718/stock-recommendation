@@ -13,8 +13,8 @@ from pathlib import Path
 
 import numpy as np
 from dotenv import load_dotenv
+from fastembed import TextEmbedding
 from loguru import logger
-from sentence_transformers import SentenceTransformer
 
 load_dotenv()
 
@@ -59,15 +59,11 @@ def run():
         chunks.extend(_chunk(doc))
     logger.info(f"Total chunks: {len(chunks)}")
 
-    model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
+    model = TextEmbedding("BAAI/bge-small-en-v1.5")
     texts = [c["text"] for c in chunks]
-    embeddings = model.encode(
-        texts,
-        normalize_embeddings=True,
-        convert_to_numpy=True,
-        show_progress_bar=True,
-        batch_size=32,
-    )
+    vecs = np.array(list(model.embed(texts)), dtype=np.float32)
+    norms = np.linalg.norm(vecs, axis=1, keepdims=True)
+    embeddings = vecs / np.maximum(norms, 1e-9)
 
     with open(DOCS_FILE, "w", encoding="utf-8") as f:
         json.dump(chunks, f, ensure_ascii=False, indent=2)

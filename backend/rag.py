@@ -1,6 +1,6 @@
 """
-rag.py — Loads scraped Groww FAQ embeddings from data/ and retrieves via cosine similarity.
-Falls back to hardcoded knowledge.py if data/ files are absent.
+rag.py — Lightweight RAG using fastembed (ONNX, no torch) + numpy cosine similarity.
+Loads pre-scraped chunks from data/; falls back to hardcoded FAQs if missing.
 """
 
 from __future__ import annotations
@@ -9,16 +9,24 @@ import json
 from pathlib import Path
 
 import numpy as np
+from fastembed import TextEmbedding
 from loguru import logger
-from sentence_transformers import SentenceTransformer
 
 DATA_DIR        = Path(__file__).parent / "data"
 DOCS_FILE       = DATA_DIR / "docs.json"
 EMBEDDINGS_FILE = DATA_DIR / "embeddings.npy"
 
-_model:      SentenceTransformer | None = None
-_embeddings: np.ndarray | None         = None
-_docs:       list[dict] | None         = None
+_MODEL_NAME = "BAAI/bge-small-en-v1.5"   # 384-dim, ~67MB ONNX, no torch
+
+_model:      TextEmbedding | None = None
+_embeddings: np.ndarray | None    = None
+_docs:       list[dict] | None    = None
+
+
+def _embed(texts: list[str]) -> np.ndarray:
+    vecs = np.array(list(_model.embed(texts)), dtype=np.float32)
+    norms = np.linalg.norm(vecs, axis=1, keepdims=True)
+    return vecs / np.maximum(norms, 1e-9)
 
 
 def load() -> None:
@@ -26,9 +34,9 @@ def load() -> None:
     if _model is not None:
         return
 
-    logger.info("Loading sentence-transformer model ...")
-    _model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
-    logger.success(f"Model ready | dim={_model.get_sentence_embedding_dimension()}")
+    logger.info(f"Loading fastembed model: {_MODEL_NAME} ...")
+    _model = TextEmbedding(_MODEL_NAME)
+    logger.success("Embedding model ready.")
 
     if DOCS_FILE.exists() and EMBEDDINGS_FILE.exists():
         with open(DOCS_FILE, encoding="utf-8") as f:
@@ -36,15 +44,13 @@ def load() -> None:
         _embeddings = np.load(str(EMBEDDINGS_FILE))
         logger.success(f"Loaded {len(_docs)} scraped chunks | shape={_embeddings.shape}")
     else:
-        # Fallback: embed the hardcoded FAQ list
-        logger.warning("Scraped data not found — using hardcoded FAQs. Run seed.py to scrape Groww.")
+        logger.warning("No scraped data found — using hardcoded FAQs. Run seed.py to scrape Groww.")
         from knowledge import FAQ_DATA
         _docs = [
             {"text": f"Q: {f['question']}\nA: {f['answer']}", "url": f["source"], "title": f["question"]}
             for f in FAQ_DATA
         ]
-        texts = [d["text"] for d in _docs]
-        _embeddings = _model.encode(texts, normalize_embeddings=True, convert_to_numpy=True)
+        _embeddings = _embed([d["text"] for d in _docs])
         logger.success(f"Fallback embeddings ready | {len(_docs)} FAQs")
 
 
@@ -52,19 +58,13 @@ def retrieve(query: str, top_k: int = 3) -> list[dict]:
     if _model is None or _embeddings is None or _docs is None:
         raise RuntimeError("RAG not initialised — call rag.load() first.")
 
-    q_vec  = _model.encode([query], normalize_embeddings=True, convert_to_numpy=True)
+    q_vec  = _embed([query])
     scores = (_embeddings @ q_vec.T).flatten()
     top_i  = np.argsort(scores)[::-1][:top_k]
 
-    results = []
-    for i in top_i:
-        d = _docs[int(i)]
-        results.append({
-            "text":  d["text"],
-            "url":   d["url"],
-            "title": d.get("title", ""),
-            "score": float(scores[i]),
-        })
-
-    logger.debug(f"retrieve '{query[:50]}' | scores={[round(r['score'],3) for r in results]}")
-    return results
+    return [{
+        "text":  _docs[int(i)]["text"],
+        "url":   _docs[int(i)]["url"],
+        "title": _docs[int(i)].get("title", ""),
+        "score": float(scores[i]),
+    } for i in top_i]
