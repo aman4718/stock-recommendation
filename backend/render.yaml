@@ -1,16 +1,19 @@
 services:
   - type: web
     name: groww-faq-assistant
-    runtime: docker
+    runtime: python
     region: singapore
     plan: free
+
+    buildCommand: >
+      pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu &&
+      pip install --no-cache-dir -r requirements.txt
+
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1
 
     envVars:
       - key: GROQ_API_KEY
         sync: false
-
-      - key: PORT
-        value: "8000"
 
       - key: PYTHONUNBUFFERED
         value: "1"
