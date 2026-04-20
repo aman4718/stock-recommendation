@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: groww-faq-assistant
+    runtime: docker
+    region: singapore
+    plan: free
+
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+
+      - key: PORT
+        value: "8000"
+
+      - key: PYTHONUNBUFFERED
+        value: "1"
+
+      - key: TRANSFORMERS_CACHE
+        value: /tmp/hf_cache
+
+      - key: HF_HOME
+        value: /tmp/hf_home

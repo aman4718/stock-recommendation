@@ -1,40 +1,87 @@
 """
-main.py — Phase 4: Root FastAPI Interface for the RAG Chatbot
+main.py — Groww MF/ETF/Stock FAQ Assistant (RAG + Groq)
+Facts-only. Refuses investment advice. Cites source on every answer.
 """
 
-from typing import List, Optional, Dict, Any
-import traceback
+import os
+import re
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi.responses import FileResponse
+from groq import AuthenticationError, Groq, RateLimitError
 from loguru import logger
+from pydantic import BaseModel
 
-# ── App Setup ────────────────────────────────────────────────────────
-app = FastAPI(
-    title="AI Stock RAG Chatbot API",
-    description="REST API for querying stock recommendations using ChromaDB and Groq.",
-    version="1.0.0"
+load_dotenv()
+
+import rag
+
+# ── Prompts ───────────────────────────────────────────────────────
+_SYSTEM_PROMPT = """You are a facts-only mutual fund and investment FAQ assistant for Groww users.
+
+Rules (follow strictly):
+1. Answer ONLY using the provided Context below — do not use outside knowledge.
+2. Keep answers concise (3–6 sentences max).
+3. Always end your answer with: Source: <URL from context>
+4. If the answer is NOT in the context, reply exactly:
+   "I don't have verified information on this. Please check groww.in for accurate details."
+5. NEVER give investment advice, recommendations, or opinions on whether to buy/sell any fund/stock.
+6. If the user asks for recommendations, portfolio advice, or "best fund", reply exactly:
+   "I only provide factual information, not investment advice. For personalised guidance, consult a SEBI-registered advisor. Learn more: https://groww.in/blog/how-to-choose-mutual-fund"
+"""
+
+_GROQ_MODEL = "llama-3.1-8b-instant"
+
+# ── Opinion/advice query detection ───────────────────────────────
+_ADVICE_PATTERNS = re.compile(
+    r"\b(should i|shall i|can i invest|best fund|top fund|recommend|which fund|"
+    r"buy|sell|portfolio|where to invest|good fund|safe fund|suggest|better fund|"
+    r"worth investing|worth buying)\b",
+    re.IGNORECASE,
 )
 
-# ── Env Validation ──────────────────────────────────────────────────
-import os
-from phase3.settings import GROQ_API_KEY, CHROMA_API_KEY
-logger.info("Checking Environment Variables...")
-logger.info(f"GROQ_API_KEY exists: {bool(GROQ_API_KEY)}")
-logger.info(f"CHROMA_API_KEY exists: {bool(CHROMA_API_KEY)}")
-logger.info(f"APP_ENV: {os.getenv('APP_ENV', 'not set')}")
+_REFUSAL = (
+    "I only provide factual information, not investment advice. "
+    "For personalised guidance, please consult a SEBI-registered investment advisor. "
+    "Learn more: https://groww.in/blog/how-to-choose-mutual-fund"
+)
 
-# ── Import RAG Pipeline ──────────────────────────────────────────────
-run_query = None
-try:
-    from phase3.rag_pipeline import run_query as rag_run_query
-    run_query = rag_run_query
-    logger.success("Successfully imported RAG pipeline from phase3.")
-except Exception as e:
-    logger.error(f"CRITICAL: Failed to import run_query from phase3: {e}")
-    # We define a fallback or just let the endpoints check for None
+# ── Groq client ───────────────────────────────────────────────────
+_groq_client: Groq | None = None
 
-# Allow CORS for all domains
+
+def get_client() -> Groq:
+    global _groq_client
+    if _groq_client is None:
+        key = os.getenv("GROQ_API_KEY", "")
+        if not key:
+            raise RuntimeError("GROQ_API_KEY not set.")
+        _groq_client = Groq(api_key=key)
+    return _groq_client
+
+
+# ── Lifespan ──────────────────────────────────────────────────────
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting up — loading RAG engine ...")
+    rag.load()
+    logger.success("RAG engine ready.")
+    yield
+    logger.info("Shutting down.")
+
+
+# ── App ───────────────────────────────────────────────────────────
+app = FastAPI(
+    title="Groww FAQ Assistant",
+    description="Facts-only MF/ETF/Stock FAQ chatbot. No investment advice.",
+    version="2.0.0",
+    lifespan=lifespan,
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -43,83 +90,82 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Pydantic Models ──────────────────────────────────────────────────
+
+# ── Models ────────────────────────────────────────────────────────
 class ChatRequest(BaseModel):
     query: str
 
-class StockRecommendation(BaseModel):
-    ticker: str
-    name: str
-    sector: str
-    industry: str
-    price: float
-    pe_ratio: Optional[float] = None
-    market_cap: str
-    one_month_change: str
-    risk_level: str
-    valuation_category: str
-    description: str
-    fifty_two_week_high: Optional[float] = None
-    fifty_two_week_low: Optional[float] = None
-    eps: Optional[float] = None
-    revenue_growth: str
-    profit_margin: str
-    yahoo_finance_url: str
 
 class ChatResponse(BaseModel):
-    answer: str
-    recommendations: List[StockRecommendation]
+    answer:   str
+    sources:  list[str]
+    refused:  bool = False
 
-# ── Endpoints ────────────────────────────────────────────────────────
 
-@app.get("/", tags=["System"])
-def root():
-    """Root endpoint to verify the API is live."""
-    return {
-        "status": "online",
-        "message": "AI Stock RAG Chatbot API is running.",
-        "docs": "/docs",
-        "health": "/health"
-    }
+# ── Routes ────────────────────────────────────────────────────────
+@app.get("/", include_in_schema=False)
+def serve_ui():
+    html_path = Path(__file__).parent / "index.html"
+    if not html_path.exists():
+        raise HTTPException(status_code=404, detail="index.html not found.")
+    return FileResponse(str(html_path), media_type="text/html")
 
-@app.get("/health", tags=["System"])
-def health_check():
-    """Verify that the API is up and running."""
-    return {"status": "healthy", "service": "stock_rag_chatbot"}
 
-@app.post("/chat", response_model=ChatResponse, tags=["Chat"])
-def chat_endpoint(request: ChatRequest):
-    """
-    RAG Chat Endpoint.
-    Accepts a user query, triggers retrieval from Chroma, and generates an LLM response.
-    """
-    if not request.query.strip():
+@app.get("/health")
+def health():
+    return {"status": "healthy", "service": "groww-faq-assistant"}
+
+
+@app.post("/chat", response_model=ChatResponse)
+def chat(req: ChatRequest):
+    query = req.query.strip()
+    if not query:
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
-        
-    logger.info(f"API received query: '{request.query}'")
-    
-    try:
-        # Check if run_query is available
-        if run_query is None:
-            raise RuntimeError("RAG Pipeline (run_query) was not loaded correctly during startup.")
 
-        # Run pipeline
-        res = run_query(request.query)
-        
+    logger.info(f"Query: '{query}'")
+
+    # Refuse opinion / advice queries immediately
+    if _ADVICE_PATTERNS.search(query):
+        logger.info("Refused opinion query.")
         return ChatResponse(
-            answer=res["answer"],
-            recommendations=res["recommendations"]
-        )
-    except Exception as e:
-        error_msg = traceback.format_exc()
-        logger.error(f"Error processing chat request:\n{error_msg}")
-        # Return detailed error for debugging in production
-        raise HTTPException(
-            status_code=500, 
-            detail=f"RAG Processing Error: {str(e)} | See logs for full traceback."
+            answer=_REFUSAL,
+            sources=["https://groww.in/blog/how-to-choose-mutual-fund"],
+            refused=True,
         )
 
-# For local testing convenience
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    # Retrieve top-3 relevant chunks
+    hits = rag.retrieve(query, top_k=3)
+
+    # Build context for LLM
+    context_parts = []
+    for i, h in enumerate(hits, 1):
+        context_parts.append(
+            f"[Source {i}]\nTitle: {h['title']}\nURL: {h['url']}\n{h['text']}"
+        )
+    context = "\n\n---\n\n".join(context_parts)
+
+    # Call Groq
+    try:
+        resp = get_client().chat.completions.create(
+            model=_GROQ_MODEL,
+            max_tokens=512,
+            temperature=0.1,
+            messages=[
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "user",   "content": f"Context:\n{context}\n\nQuestion: {query}"},
+            ],
+        )
+        answer = resp.choices[0].message.content or "I don't have verified information on this."
+    except AuthenticationError:
+        logger.error("Invalid GROQ_API_KEY.")
+        raise HTTPException(status_code=500, detail="LLM authentication failed.")
+    except RateLimitError:
+        logger.warning("Groq rate limit hit.")
+        raise HTTPException(status_code=429, detail="Rate limit reached. Please retry shortly.")
+    except Exception as e:
+        logger.error(f"LLM error: {e}")
+        raise HTTPException(status_code=500, detail=f"LLM error: {str(e)}")
+
+    sources = list(dict.fromkeys(h["url"] for h in hits))
+    logger.success(f"Answered | sources={sources}")
+    return ChatResponse(answer=answer, sources=sources)
