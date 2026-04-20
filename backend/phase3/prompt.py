@@ -21,7 +21,7 @@ User Query:
 """
 
 def get_rag_prompt_template() -> ChatPromptTemplate:
-    return ChatPromptTemplate.from_messages([
-        ("system", RAG_SYSTEM_PROMPT),
-        ("human", "{query}") # Provide it again here so it's fresh/standardized
-    ])
+    """Returns a ChatPromptTemplate. Using from_template for stability."""
+    return ChatPromptTemplate.from_template(
+        RAG_SYSTEM_PROMPT
+    )

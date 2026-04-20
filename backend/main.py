@@ -3,6 +3,7 @@ main.py — Phase 4: Root FastAPI Interface for the RAG Chatbot
 """
 
 from typing import List, Optional, Dict, Any
+import traceback
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -14,6 +15,14 @@ app = FastAPI(
     description="REST API for querying stock recommendations using ChromaDB and Groq.",
     version="1.0.0"
 )
+
+# ── Env Validation ──────────────────────────────────────────────────
+import os
+from phase3.settings import GROQ_API_KEY, CHROMA_API_KEY
+logger.info("Checking Environment Variables...")
+logger.info(f"GROQ_API_KEY exists: {bool(GROQ_API_KEY)}")
+logger.info(f"CHROMA_API_KEY exists: {bool(CHROMA_API_KEY)}")
+logger.info(f"APP_ENV: {os.getenv('APP_ENV', 'not set')}")
 
 # ── Import RAG Pipeline ──────────────────────────────────────────────
 run_query = None
@@ -63,6 +72,16 @@ class ChatResponse(BaseModel):
 
 # ── Endpoints ────────────────────────────────────────────────────────
 
+@app.get("/", tags=["System"])
+def root():
+    """Root endpoint to verify the API is live."""
+    return {
+        "status": "online",
+        "message": "AI Stock RAG Chatbot API is running.",
+        "docs": "/docs",
+        "health": "/health"
+    }
+
 @app.get("/health", tags=["System"])
 def health_check():
     """Verify that the API is up and running."""
@@ -80,6 +99,10 @@ def chat_endpoint(request: ChatRequest):
     logger.info(f"API received query: '{request.query}'")
     
     try:
+        # Check if run_query is available
+        if run_query is None:
+            raise RuntimeError("RAG Pipeline (run_query) was not loaded correctly during startup.")
+
         # Run pipeline
         res = run_query(request.query)
         
@@ -88,8 +111,13 @@ def chat_endpoint(request: ChatRequest):
             recommendations=res["recommendations"]
         )
     except Exception as e:
-        logger.error(f"Error processing chat request: {e}")
-        raise HTTPException(status_code=500, detail="Internal Server Error during RAG processing.")
+        error_msg = traceback.format_exc()
+        logger.error(f"Error processing chat request:\n{error_msg}")
+        # Return detailed error for debugging in production
+        raise HTTPException(
+            status_code=500, 
+            detail=f"RAG Processing Error: {str(e)} | See logs for full traceback."
+        )
 
 # For local testing convenience
 if __name__ == "__main__":
